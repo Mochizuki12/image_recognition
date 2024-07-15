@@ -4,14 +4,34 @@ import cv2
 import os
 
 #画像を保存するフォルダ名
-image_saving_directory = "/image"
 
-#パスの設定
+i = 0
+j = 1
+
 #scriptディレクトリのひとつ上
 os.chdir('..')
-path = os.getcwd() + image_saving_directory + "/"
-print("Save directory: " + path)
-i = 0
+print(os.getcwd())
+file_ok = True
+
+while file_ok:
+    try:
+        base_path = os.getcwd() + "/image_" + str(j)
+        os.makedirs(base_path)
+        file_ok = False
+    except FileExistsError:
+        print("ファイルが存在しています"+base_path)
+        file_ok = True
+    j = j+1
+
+#パスの設定
+path1 = base_path + "/color/"
+path2 = base_path + "/depth/"
+print("Save directory: " + path1)
+print("Save directory: " + path2)
+
+os.makedirs(path1)
+os.makedirs(path2)
+
 
 #デバイスの接続確認
 ctx = rs.context()
@@ -78,13 +98,13 @@ try:
         # カラーとデプス画像を並べて表示
         images = np.hstack((color_image, depth_colormap))
         cv2.imshow('RealSense', images)
-        cv2.imwrite(path+str(i)+"color.jpg",color_image)
-        cv2.imwrite(path+str(i)+"depth_colormap.jpg",depth_colormap)
+        cv2.imwrite(path1+str(i)+"color.jpg",color_image)
+        cv2.imwrite(path2+str(i)+"depth_colormap.jpg",depth_colormap)
 
         i = i+1
 
         # 'q'を押してウィンドウを閉じる
-        if cv2.waitKey(1) & 0xFF == ord('q'):
+        if cv2.waitKey(100) & 0xFF == ord('q'):
             break
 
 finally:
