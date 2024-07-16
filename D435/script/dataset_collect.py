@@ -26,11 +26,24 @@ while file_ok:
 #パスの設定
 path1 = base_path + "/color/"
 path2 = base_path + "/depth/"
+path3 = base_path + "/ir_left/"
+path4 = base_path + "/ir_right/"
+path5 = base_path + "/ir_left_color/"
+path6 = base_path + "/ir_right_color/"
+
 print("Save directory: " + path1)
 print("Save directory: " + path2)
+print("Save directory: " + path3)
+print("Save directory: " + path4)
+print("Save directory: " + path5)
+print("Save directory: " + path6)
 
 os.makedirs(path1)
 os.makedirs(path2)
+os.makedirs(path3)
+os.makedirs(path4)
+os.makedirs(path5)
+os.makedirs(path6)
 
 
 #デバイスの接続確認
@@ -72,34 +85,53 @@ if not found_rgb:
     print("The demo requires Depth camera with Color sensor")
     exit(0)
 
-# カラーストリームを設定
+# ストリームを設定
 config.enable_stream(rs.stream.color, 640, 480, rs.format.bgr8, 30)
 config.enable_stream(rs.stream.depth, 640, 480, rs.format.z16, 30)
+config.enable_stream(rs.stream.infrared, 1, 640, 480, rs.format.y8, 30)
+config.enable_stream(rs.stream.infrared, 2, 640, 480, rs.format.y8, 30)
+
 
 # ストリーミング開始
 pipeline.start(config)
+
+align_to = rs.stream.color
+#align_to = rs.stream.depth
+align = rs.align(align_to)
 
 try:
     while True:
         # フレームセットを待機
         frames = pipeline.wait_for_frames()
 
-        # カラーフレームとデプスフレームを取得
-        color_frame = frames.get_color_frame()
-        depth_frame = frames.get_depth_frame()
+        # フレームを取得
+        aligned_frames = align.process(frames)
+        color_frame = aligned_frames.get_color_frame()
+        depth_frame = aligned_frames.get_depth_frame()
+        ir_frame1 = aligned_frames.get_infrared_frame(1)
+        ir_frame2 = aligned_frames.get_infrared_frame(2)
 
         # Numpy配列に変換
         color_image = np.asanyarray(color_frame.get_data())
         depth_image = np.asanyarray(depth_frame.get_data())
+        ir_image1 = np.asanyarray(ir_frame1.get_data())
+        ir_image2 = np.asanyarray(ir_frame2.get_data())
 
-        # デプス画像をカラーマップに変換
+        # カラーマップに変換
+        ir_colormap1   = cv2.applyColorMap(cv2.convertScaleAbs(ir_image1), cv2.COLORMAP_JET)
+        ir_colormap2   = cv2.applyColorMap(cv2.convertScaleAbs(ir_image2), cv2.COLORMAP_JET)
         depth_colormap = cv2.applyColorMap(cv2.convertScaleAbs(depth_image, alpha=0.08), cv2.COLORMAP_JET)
 
         # カラーとデプス画像を並べて表示
-        images = np.hstack((color_image, depth_colormap))
+        images = np.vstack(( np.hstack((ir_colormap1, ir_colormap2)), np.hstack((color_image, depth_colormap)) ))
         cv2.imshow('RealSense', images)
         cv2.imwrite(path1+str(i)+"color.jpg",color_image)
         cv2.imwrite(path2+str(i)+"depth_colormap.jpg",depth_colormap)
+        cv2.imwrite(path3+str(i)+"ir_left.jpg",ir_image1)
+        cv2.imwrite(path4+str(i)+"ir_right.jpg",ir_image2)
+        cv2.imwrite(path5+str(i)+"ir_left_color.jpg",ir_colormap1)
+        cv2.imwrite(path6+str(i)+"ir_right_color.jpg",ir_colormap2)
+
 
         i = i+1
 
